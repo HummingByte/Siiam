@@ -7,8 +7,12 @@ enum class DefState{
 
 open class Def(val ax: Def?){
     var hash: Int? = null
-    //var state : DefState = DefState.Pending
-    
+    var axiom: Axiom? = null
+    var dbg : String? = null
+
+    open fun setOp(idx: Int, op : Def){
+        unreachable<Unit>()
+    }
 }
 
 enum class Axiom{
@@ -26,8 +30,12 @@ enum class Axiom{
 
 object EmptyDef : Def(null)
 
-class DataDef(ax: Def, val data : ByteArray) : Def(ax)
-class NodeDef(ax: Def, val ops : Array<Def>) : Def(ax)
+class DataDef(ax: Def, val data : Data) : Def(ax)
+class NodeDef(ax: Def, val ops : Array<Def>) : Def(ax){
+    override fun setOp(idx: Int, op: Def) {
+        ops[idx] = op
+    }
+}
 
 class World{
     val sea = HashMap<Int, Def>()
@@ -47,6 +55,8 @@ class World{
                 arrayOf(prev)
             )
 
+            axiomDef.axiom = axiom
+
             var hash = signer.sign(axiomDef)
             axiomDef.hash = hash
             insertDef(hash, axiomDef)
@@ -61,19 +71,19 @@ class World{
         return axiom2def[axiom]!!
     }
 
-    fun insert(def : Def){
+    fun insert(def : Def) : Def{
         val hash = def.hash ?: return unreachable()
-
-        insertDef(hash, def)
+        return insertDef(hash, def)
     }
 
-    fun insertDef(hash: Int, def: Def){
+    fun insertDef(hash: Int, def: Def) : Def{
         if(sea.containsKey(hash)){
             println("Double hash appeard")
             unreachable<Unit>()
         }
 
         sea[hash] = def
+        return def
     }
 }
 
@@ -148,7 +158,7 @@ class CyclicSigner(val world: World){
     }
 
     fun blend(defs: Collection<Def>){
-        for( epoch in 0 .. defs.size ){
+        for( epoch in 0 until defs.size ){
             for( def in defs ){
                 signNode(def, epoch % 2)
             }
@@ -157,9 +167,9 @@ class CyclicSigner(val world: World){
     
     fun signNode(def : Def, slot: Int){
         val node = getNode(def)
-        val hash = Hasher()
+        val hasher = Hasher()
 
-        hash.update(def.ax!!.hash!!)
+        hasher.update(def.ax!!.hash!!)
         when( def ){
             is NodeDef -> {
                 for( op in def.ops ){
@@ -177,15 +187,15 @@ class CyclicSigner(val world: World){
                         }
                     }
     
-                    hash.update(sign)
+                    hasher.update(sign)
                 }
             }
             is DataDef -> {
-                hash.update(def.data)
+                def.data.hash(hasher)
             }
         }
 
-        node.signs[1 - slot] = hash.finalize()
+        node.signs[1 - slot] = hasher.finalize()
     }
 
     fun disambiguate(old_defs: List<Def>){
@@ -227,7 +237,7 @@ class CyclicSigner(val world: World){
         for( old in unique_defs ){
             if( old is NodeDef ){
                 val new = map[old]
-                for( idx in 0 .. old.ops.size){
+                for( idx in 0 until old.ops.size){
                     val op = old.ops[idx]
                     val newOp = map[op]
                     val newLink = newOp ?: op
@@ -292,7 +302,7 @@ class AsyncSigner(){
             }
 
             is DataDef -> {
-                hasher.update(def.data)
+                def.data.hash(hasher)
             }
         }
 

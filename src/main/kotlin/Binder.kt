@@ -20,7 +20,7 @@ class Binder {
     fun popScope() {
         val last_level = levels.last()
 
-        for( x in last_level..decls.size ){
+        for( x in last_level until decls.size ){
             val lastDecl = decls.pop()
 
             val shadows = lastDecl.shadows

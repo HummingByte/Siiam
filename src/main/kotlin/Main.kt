@@ -25,12 +25,8 @@ fun main(args: Array<String>) {
     val checker = TypeChecker(tyTable)
     checker.check(mod)
 
-    var world = World()
+    val hirEmitter = HirEmitter(symTable)
+    hirEmitter.emitModule(mod)
 
-
-
-
-    println("test")
-
-
+    hirEmitter.list()
 }
