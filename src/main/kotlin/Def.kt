@@ -5,16 +5,6 @@ enum class DefState{
     Constructed, Pending
 }
 
-open class Def(val ax: Def?){
-    var hash: Int? = null
-    var axiom: Axiom? = null
-    var dbg : String? = null
-
-    open fun setOp(idx: Int, op : Def){
-        unreachable<Unit>()
-    }
-}
-
 enum class Axiom{
     Bot, Data,
     Tuple, Sigma, Pack, Extract,
@@ -28,24 +18,77 @@ enum class Axiom{
 }
 
 
-object EmptyDef : Def(null)
+class DefKey(val def: Def){
+    override fun hashCode(): Int {
+        return def.hash ?: 0
+    }
 
+    override fun equals(other: Any?): Boolean {
+        if(other !is Def) return false
+        return NodeComparator().similar(def, other)
+    }
+}
+
+abstract class Def(val world: World){
+    var ax: Def? = null
+    var hash: Int? = null
+    var axiom: Axiom? = null
+    var dbg : String? = null
+
+    constructor(ax: Def) : this(ax.world){
+        this.ax = ax
+    }
+
+    open fun setOp(idx: Int, op : Def){
+        unreachable<Unit>()
+    }
+}
+
+class EmptyDef(world: World) : Def(world)
 class DataDef(ax: Def, val data : Data) : Def(ax)
+
 class NodeDef(ax: Def, val ops : Array<Def>) : Def(ax){
     override fun setOp(idx: Int, op: Def) {
         ops[idx] = op
     }
 }
 
+class NodeComparator(){
+    private val visited = HashSet<Def>()
+    fun similar( left : Def, right : Def ) : Boolean{
+        when(left){
+            right -> return true
+            is DataDef -> {
+                if(right !is DataDef) return false
+                return left.data == right.data
+            }
+            is NodeDef -> {
+                if(right !is NodeDef) return false
+                if(!visited.add(left)) return true
+                if(left.hash != right.hash) return false
+                if(left.ax == null){
+                    if(right.ax != null) return false
+                }else if(!similar(left.ax!!, right.ax!!)) return false
+
+                for( (leftOp, rightOp) in left.ops.zip(right.ops) ){
+                    if(!similar(leftOp, rightOp)) return false
+                }
+                return true
+            }
+            else -> return false
+        }
+    }
+}
+
 class World{
-    val sea = HashMap<Int, Def>()
+    val sea = HashMap<DefKey, Def>()
     val axiom2def = HashMap<Axiom, Def>()
+    val empty = EmptyDef(this)
 
     init {
-        val root = EmptyDef
+        val root = EmptyDef(this)
         root.hash = 0xffffffff.toInt()
         var prev : Def = root
-
 
         var signer = AsyncSigner()
 
@@ -57,9 +100,9 @@ class World{
 
             axiomDef.axiom = axiom
 
-            var hash = signer.sign(axiomDef)
+            val hash = signer.sign(axiomDef)
             axiomDef.hash = hash
-            insertDef(hash, axiomDef)
+            insert(axiomDef)
             axiom2def[axiom] = axiomDef
             prev = axiomDef
         }
@@ -72,27 +115,16 @@ class World{
     }
 
     fun insert(def : Def) : Def{
-        val hash = def.hash ?: return unreachable()
-        return insertDef(hash, def)
-    }
-
-    fun insertDef(hash: Int, def: Def) : Def{
-        if(sea.containsKey(hash)){
-            println("Double hash appeard")
-            unreachable<Unit>()
-        }
-
-        sea[hash] = def
-        return def
+        assert(def.hash != null)
+        return sea.putIfAbsent(DefKey(def), def) ?: def
     }
 }
 
-class SignNode(var index : Int){
+class SignNode(var index : Int, var def: Def){
     var lowLink : Int = index
     var closed: Boolean = false
-    var link: Def? = null
     var unique: SignNode? = null
-    var signs = Array<Int>(2){0}
+    var hashes = Array(2){0}
 
     fun unique() :  SignNode{
         return unique?.unique() ?: this
@@ -100,25 +132,35 @@ class SignNode(var index : Int){
 }
 
 class CyclicSigner(val world: World){
-    val nodes = HashMap<Def, SignNode>()
-    val old2new = HashMap<Def, Def>()
+    private val nodes = HashMap<Def, SignNode>()
+    private val old2new = HashMap<Def, Def>()
+    private val old2node = HashMap<Def, SignNode>()
 
-    fun getNode(def: Def) : SignNode{
+    fun createNode(def: Def) : SignNode{
         return nodes.computeIfAbsent(def){ SignNode(
-            nodes.size
+            nodes.size,
+            def
         )}
     }
 
-    fun discover(def: Def) : Boolean{
-        if(nodes.containsKey(def)) return true
-        if(def.hash != null) return false
+    fun getNew(old : Def) : Def{
+        if(old.hash != null) return old
+        val new = old2new[old]
+        if(new != null) return new
+        discover(old)
+        return old2new[old]!!
+    }
 
-        val currentNode = getNode(def)
+    private fun discover(def: Def) : Boolean{
+        if(def.hash != null) return false
+        if(nodes.containsKey(def)) return true
+
+        val currentNode = createNode(def)
 
         if(def is NodeDef){
             for( op in def.ops ){
                 if(discover(op)){
-                    val depNode = getNode(op)
+                    val depNode = createNode(op)
                     if( !depNode.closed ){
                         currentNode.lowLink = min(currentNode.lowLink, depNode.lowLink)
                     }
@@ -136,8 +178,13 @@ class CyclicSigner(val world: World){
     fun sign(def : Def){
         val oldDefs = ArrayList<Def>()
         collect(def, oldDefs)
+
+        createNewDefs(oldDefs)
+
+
         blend(oldDefs)
-        disambiguate(oldDefs)
+        val old2new = disambiguate(oldDefs)
+        addMapping(oldDefs, old2new)
     }
 
     fun collect(def : Def, list : MutableList<Def>){
@@ -151,14 +198,14 @@ class CyclicSigner(val world: World){
             node.closed = true
             if( def is NodeDef ){
                 for( op in def.ops ){
-                    collect(def, list)
+                    collect(op, list)
                 }
             }
         }
     }
 
     fun blend(defs: Collection<Def>){
-        for( epoch in 0 until defs.size ){
+        for( epoch in defs.indices){
             for( def in defs ){
                 signNode(def, epoch % 2)
             }
@@ -166,7 +213,7 @@ class CyclicSigner(val world: World){
     }
     
     fun signNode(def : Def, slot: Int){
-        val node = getNode(def)
+        val node = createNode(def)
         val hasher = Hasher()
 
         hasher.update(def.ax!!.hash!!)
@@ -177,14 +224,16 @@ class CyclicSigner(val world: World){
                     val sign = if(opHash != null){
                         opHash
                     }else{
-                        val dep_node = getNode(op)
-        
-                        val new = old2new[dep_node.link]
+                        val depNode = createNode(op)
+                        depNode.unique().hashes[slot]
+
+                        /*
+                        val new = old2new[depNode.def]
                         if(new != null) {
                             new.hash ?: unreachable()
                         }else{
-                            dep_node.unique().signs[slot]
-                        }
+                            depNode.unique().hashes[slot]
+                        }*/
                     }
     
                     hasher.update(sign)
@@ -195,77 +244,86 @@ class CyclicSigner(val world: World){
             }
         }
 
-        node.signs[1 - slot] = hasher.finalize()
+        node.hashes[1 - slot] = hasher.finalize()
     }
 
-    fun disambiguate(old_defs: List<Def>){
-        if( old_defs.size == 1){
-            createNewDefs(old_defs, old_defs)
+    fun disambiguate(oldDefs: List<Def>){
+        val old2new = if( oldDefs.size == 1 ){
+            createNewDefs(oldDefs, oldDefs)
         }else{
-            val uniqueDefs = filterUniqueDefs(old_defs)
+            val uniqueDefs = filterUniqueDefs(oldDefs)
+            val newUniqueDefs = createNewDefs(oldDefs, uniqueDefs)
 
-            if( uniqueDefs.size != old_defs.size ){
-                for( old in uniqueDefs ){
-                    val node = getNode(old)
-                    node.signs = arrayOf(0, 0)
-                }
-
-                blend(uniqueDefs)
+            if( uniqueDefs.size != oldDefs.size ){
+                blend(newUniqueDefs.values)
             }
 
-            createNewDefs(old_defs, uniqueDefs)
+            val offset = uniqueDefs.size % 2
+            for( def in newUniqueDefs ){
+                val node = createNode(def)
+                val sign = node.hashes[uniqueDefs.size % 2]
+                newNode.hash = sign
+            }
         }
     }
 
-    fun createNewDefs(old_defs: List<Def>, unique_defs: Collection<Def>){
-        val map = HashMap<Def, Def>()
+    fun createNewDefs(uniqueDefs: Collection<Def>) : Map<Def, Def>{
+        val old2new = HashMap<Def, Def>()
 
-        for( def in unique_defs ){
-            val opLen = if(def is NodeDef){
-                def.ops.size
+        for( old in uniqueDefs ){
+            val node = createNode(old)
+
+            val newNode = if(old is NodeDef){
+                val newNode = NodeDef(old.ax!!, Array(old.ops.size){world.empty})
+                old2new[old] = newNode
+                newNode
+            }else if(old is DataDef){
+                old
             }else{
-                0
+                continue
             }
-
-            val node = getNode(def)
-            val sign = node.signs[unique_defs.size % 2]
-            val newNode = NodeDef(def.ax!!, Array<Def>(opLen){EmptyDef})
-            newNode.hash = sign
-            map[def] = newNode
         }
 
-        for( old in unique_defs ){
+        for( old in uniqueDefs ){
             if( old is NodeDef ){
-                val new = map[old]
-                for( idx in 0 until old.ops.size){
-                    val op = old.ops[idx]
-                    val newOp = map[op]
-                    val newLink = newOp ?: op
-    
-                    if( new is NodeDef ){
+                val new = old2new[old]
+                if( new is NodeDef ){
+                    for( idx in 0 until old.ops.size){
+                        val op = old.ops[idx]
+                        val newOp = old2new[op]
+                        val newLink = newOp ?: op
                         new.ops[idx] = newLink
                     }
                 }
             }
         }
-        
-        add_mapping(old_defs, map)
+
+        return old2new
     }
 
-    fun add_mapping(defs: List<Def>, map : HashMap<Def, Def>){
-        for( old in defs ){
-            val node = getNode(old)
+    fun addMapping(oldDefs: List<Def>, old2new : HashMap<Def, Def>){
+        for( old in oldDefs ){
+            val node = createNode(old)
             val uniqueNode = node.unique
 
             val new = if( uniqueNode == null ){
-                val uniqueDef = map.remove(old)!!
-                world.insert(uniqueDef)
-                uniqueDef
+                val uniqueDef = old2new[old]
+
+                if(uniqueDef == null){
+                    old
+                }else{
+                    world.insert(uniqueDef)
+                    uniqueDef
+                }
             }else{
-                old2new[uniqueNode.link]!!
+                this.old2new[uniqueNode.def]!!
             }
 
-            old2new[old] = new
+            if(old::class != new::class){
+                unreachable<Unit>()
+            }
+
+            this.old2new[old] = new
         }
     }
 
@@ -274,18 +332,33 @@ class CyclicSigner(val world: World){
         val len = old_defs.size
 
         for( old in old_defs ){
-            val node = getNode(old)
-            val sign = node.signs[len % 2]
+            val node = createNode(old)
+            val sign = node.hashes[len % 2]
 
             val uniqueNode = uniqueMap[sign]
             if( uniqueNode != null ){
-                node.unique = getNode(uniqueNode)
+                node.unique = createNode(uniqueNode)
             }else{
                 uniqueMap[sign] = old
             }
         }
 
-        return uniqueMap.values
+        val values = uniqueMap.values
+
+        for( value in values ){
+            if( value is NodeDef ){
+                val ops = value.ops
+                for( (idx, op) in ops.withIndex() ){
+                    val node = createNode(op)
+                    val unique = node.unique
+                    if(unique != null){
+                        ops[idx] = unique.def
+                    }
+                }
+            }
+        }
+
+        return values
     }
 }
 

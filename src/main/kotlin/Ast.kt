@@ -27,7 +27,9 @@ class StructDecl(
 ) : Decl(ident);
 
 
-class Ident(val sym: Sym)
+class Ident(val sym: Sym){
+    val name get() = sym.value
+}
 
 
 interface ASTTy

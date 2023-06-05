@@ -203,7 +203,7 @@ class Constructor(val world: World){
     private val cyclicSigner = CyclicSigner(world)
 
     fun construct(def : Def) : Def{
-        cyclicSigner.discover(def)
-        return cyclicSigner.old2new[def]!!
+        val new = cyclicSigner.getNew(def)
+        return new
     }
 }

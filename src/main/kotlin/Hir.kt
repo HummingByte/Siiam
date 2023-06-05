@@ -11,8 +11,8 @@ class HirEmitter(val symTable : SymTable){
 
     val world = World()
     val b = Builder(world)
-    var curr_mem: Def? = null
-    var cur_bb: Def? = null
+    var currentMem: Def? = null
+    var currentBB: Def? = null
     var mode : HirEmitterMode = HirEmitterMode.Decl
 
     fun getFun(name : String) : Def{
@@ -20,12 +20,8 @@ class HirEmitter(val symTable : SymTable){
         return b.constructor().construct(def)
     }
 
-    fun name(sym: Sym) : String{
-        return sym.value
-    }
-
     fun mapDecl(decl: Decl, value: Def){
-        val name = name(decl.ident.sym)
+        val name = decl.ident.name
         when( decl ){
             is FnDecl -> fns[name] = value
             is StructDecl -> structs[name] = value
@@ -57,7 +53,7 @@ class HirEmitter(val symTable : SymTable){
                 }
             }
             is FnTy -> {
-                val arr = Array<Def>(ty.params.size){EmptyDef}
+                val arr = Array<Def>(ty.params.size){world.empty}
                 for( (idx, param) in ty.params.withIndex() ){
                     arr[idx] = emitTy(param)
                 }
@@ -72,7 +68,7 @@ class HirEmitter(val symTable : SymTable){
                 if( testTy != null ){
                     testTy
                 }else{
-                    val memberTys = Array<Def>(ty.members.size){EmptyDef}
+                    val memberTys = Array<Def>(ty.members.size){world.empty}
 
                     val sigma = b.sigma(memberTys)
                     struct2def[ty] = sigma
@@ -97,12 +93,12 @@ class HirEmitter(val symTable : SymTable){
         val one = b.litIdx(2, 1)
         val mem = b.extract(def, zero)
         val res = b.extract(def, one)
-        curr_mem = mem
+        currentMem = mem
         return res
     }
 
     fun mem() : Def {
-        val mem = curr_mem
+        val mem = currentMem
         return when(mem){
             null -> unreachable()
             else -> mem
@@ -147,8 +143,9 @@ class HirEmitter(val symTable : SymTable){
                     val fnc = if( test != null ){
                         test
                     }else{
-                        val fnc_ty = emitTy(decl.ty!!)
-                        val fnc = b.lam(fnc_ty)
+                        val fncTy = emitTy(decl.ty!!)
+                        val fnc = b.lam(fncTy)
+                        fnc.dbg = decl.ident.name
                         mapDecl(decl, fnc)
                         fnc
                     }
@@ -159,14 +156,15 @@ class HirEmitter(val symTable : SymTable){
                     for( (idx, param) in decl.params.withIndex()){
                         val pos = b.lit(idx, arity)
                         val value = b.extract(`var`, pos)
+                        value.dbg = param.ident.name
                         mapDecl(param, value)
                     }
     
-                    cur_bb = fnc
+                    currentBB = fnc
                     val body = remitExpr(decl.body)
                     val ret = b.ret(fnc)
                     val retApp = b.app(ret, body)
-                    b.setBody(cur_bb!!, retApp)
+                    b.setBody(currentBB!!, retApp)
                 }
                 else -> {}
             }
@@ -235,7 +233,7 @@ class HirEmitter(val symTable : SymTable){
             is FnCallExpr -> {
                 val callee = remitExpr(expr.callee)
         
-                val arr = Array<Def>(expr.args.size){EmptyDef}
+                val arr = Array<Def>(expr.args.size){world.empty}
                 for( (idx, arg) in expr.args.withIndex()){
                     val argDef = remitExpr(arg)
                     arr[idx] = argDef
@@ -334,8 +332,8 @@ class HirEmitter(val symTable : SymTable){
     }
 
     fun jump_bb(body: Def, next: Def){
-        b.setBody(cur_bb!!, body)
-        cur_bb = next
+        b.setBody(currentBB!!, body)
+        currentBB = next
     }
 
     fun finish_bb(body: Def){
@@ -347,17 +345,32 @@ class HirEmitter(val symTable : SymTable){
     }
 
     fun list(){
+        val constructor = b.constructor()
+
+        if(true){
+            val world = World()
+            val ax = world.axiom(Axiom.TyReal)
+            val a = NodeDef(ax, arrayOf(world.empty))
+            val b = NodeDef(ax, arrayOf(world.empty))
+            a.ops[0] = b
+            b.ops[0] = a
+            a.dbg = "a"
+            b.dbg = "b"
+            constructor.construct(a)
+        }
+
         println("-------------------------------------------------")
         println("Structs:")
-        val constructor = b.constructor()
         for( (name, def) in structs){
             val new = constructor.construct(def)
-            println("    {$name} {$new}")
+            val signature = "%X".format(new.hash)
+            println("    $name $signature")
         }
         println("Functions:")
         for( (name, def) in fns){
             val new = constructor.construct(def)
-            println("    {$name} {$new}")
+            val signature = "%X".format(new.hash)
+            println("    $name $signature")
         }
         println("-------------------------------------------------")
     }

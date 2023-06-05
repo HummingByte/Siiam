@@ -1,5 +1,16 @@
 
 
+struct Node{
+    value : i32
+    next : Node
+}
+
+struct A{
+    value : i32
+    next : A
+}
+
+
 fn main(a: i32) : i64{
     a + 3
 }
