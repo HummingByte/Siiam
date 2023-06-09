@@ -347,16 +347,23 @@ class HirEmitter(val symTable : SymTable){
     fun list(){
         val constructor = b.constructor()
 
+
         if(true){
             val world = World()
             val ax = world.axiom(Axiom.TyReal)
-            val a = NodeDef(ax, arrayOf(world.empty))
-            val b = NodeDef(ax, arrayOf(world.empty))
+            val builder = Builder(world)
+            val i32 = builder.tyInt(32)
+            val i64 = builder.tyInt(64)
+            val a = NodeDef(ax, arrayOf(world.empty, i32))
+            val b = NodeDef(ax, arrayOf(world.empty, i64))
             a.ops[0] = b
             b.ops[0] = a
             a.dbg = "a"
             b.dbg = "b"
-            constructor.construct(a)
+            val aNew = constructor.construct(a)
+            val bNew = constructor.construct(b)
+
+            println("test")
         }
 
         println("-------------------------------------------------")
@@ -367,8 +374,10 @@ class HirEmitter(val symTable : SymTable){
             println("    $name $signature")
         }
         println("Functions:")
+        val constFns = arrayListOf<Def>()
         for( (name, def) in fns){
             val new = constructor.construct(def)
+            constFns.add(new)
             val signature = "%X".format(new.hash)
             println("    $name $signature")
         }

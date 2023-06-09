@@ -16,6 +16,12 @@ class Builder(val world : World) {
         //return world.insert(def)
     }
 
+    fun nodeDef(ax : Def, ops : Array<Def>, dbg : String) : Def {
+        val result = NodeDef(ax, ops)
+        result.dbg = dbg
+        return result
+    }
+
     fun nothing() : Def {
         return world.axiom(Axiom.Nothing)
     }
@@ -28,28 +34,28 @@ class Builder(val world : World) {
         val tyAxiomDef = world.axiom(Axiom.TyInt)
         val data = IntData(width)
         val valueDef = dataDef(data)
-        return nodeDef(tyAxiomDef, arrayOf(valueDef))
+        return nodeDef(tyAxiomDef, arrayOf(valueDef), "tyInt")
     }
 
     fun tyIdx(width: Int) : Def {
         val tyAxiomDef = world.axiom(Axiom.TyIdx)
         val data = IntData(width)
         val valueDef = dataDef(data)
-        return nodeDef(tyAxiomDef, arrayOf(valueDef))
+        return  nodeDef(tyAxiomDef, arrayOf(valueDef), "tyInt")
     }
 
     fun tyReal(width: Int) : Def {
         val tyAxiomDef = world.axiom(Axiom.TyReal)
         val data = IntData(width)
         val valueDef = dataDef(data)
-        return nodeDef(tyAxiomDef, arrayOf(valueDef))
+        return nodeDef(tyAxiomDef, arrayOf(valueDef), "tyReal")
     }
 
     fun lit(value: Int, ty: Def) : Def {
         val literalAx = world.axiom(Axiom.Lit)
         val data = IntData(value)
         val valueDef = dataDef(data)
-        return nodeDef(literalAx, arrayOf(ty, valueDef))
+        return nodeDef(literalAx, arrayOf(ty, valueDef), "lit")
     }
 
     fun litInt( width: Int, idx: Int ) : Def{
@@ -64,17 +70,17 @@ class Builder(val world : World) {
 
     fun lam(ty : Def) : Def {
         val ax = world.axiom(Axiom.Lam)
-        return nodeDef(ax, arrayOf(ty, nothing()))
+        return nodeDef(ax, arrayOf(ty, nothing()), "lam")
     }
 
     fun `var`(lam: Def) : Def {
         val ax = world.axiom(Axiom.Var)
-        return nodeDef(ax, arrayOf(lam))
+        return nodeDef(ax, arrayOf(lam), "var")
     }
 
     fun ret(lam: Def) : Def {
         val ax = world.axiom(Axiom.Ret)
-        return nodeDef(ax, arrayOf(lam))
+        return nodeDef(ax, arrayOf(lam), "ret")
     }
 
     fun unit() : Def{
@@ -87,22 +93,22 @@ class Builder(val world : World) {
 
     fun tuple(elems: Array<Def>) : Def {
         val ax = world.axiom(Axiom.Tuple)
-        return nodeDef(ax,elems)
+        return nodeDef(ax,elems, "tuple")
     }
 
     fun sigma(elems: Array<Def>) : Def {
         val ax = world.axiom(Axiom.Tuple)
-        return nodeDef(ax,elems)
+        return nodeDef(ax,elems, "sigma")
     }
 
     fun pack(shape: Def, body: Def) : Def {
         val ax = world.axiom(Axiom.Pack)
-        return nodeDef(ax, arrayOf(shape, body))
+        return nodeDef(ax, arrayOf(shape, body), "pack")
     }
 
     fun extract(tup: Def, index: Def) : Def {
         val ax = world.axiom(Axiom.Extract)
-        return nodeDef(ax, arrayOf(tup, index))
+        return nodeDef(ax, arrayOf(tup, index), "extract")
     }
 
     fun app(callee: Def, args: Array<Def>) : Def {
@@ -112,12 +118,12 @@ class Builder(val world : World) {
 
     fun app(callee: Def, arg: Def) : Def {
         val ax = world.axiom(Axiom.App)
-        return nodeDef(ax, arrayOf(callee, arg))
+        return nodeDef(ax, arrayOf(callee, arg), "app")
     }
 
     fun pi(domain: Def, co_domain : Def) : Def {
         val ax = world.axiom(Axiom.Pi)
-        return nodeDef(ax, arrayOf(domain, co_domain))
+        return nodeDef(ax, arrayOf(domain, co_domain), "pi")
     }
 
     fun add(lhs: Def, rhs: Def) : Def {

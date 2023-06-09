@@ -1,18 +1,14 @@
 
-
-struct Node{
-    value : i32
-    next : Node
+fn main(a: i32) : i32{
+    main(a)
 }
 
-struct A{
-    value : i32
-    next : A
+fn xx(x: i32) : i32{
+    xx2(x)
 }
 
-
-fn main(a: i32) : i64{
-    a + 3
+fn xx2(x: i32) : i32{
+    xx(x)
 }
 
 
