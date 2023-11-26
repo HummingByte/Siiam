@@ -20,11 +20,11 @@ class LLVMEmitter(){
 
     val fns = HashMap<String, LLVMFunction>()
     val structs = HashMap<String, LLVMStructType>()
-    val struct2def = HashMap<Ty, String>()
     val decl2slot = HashMap<Decl, LLVMValue>()
 
     lateinit var fn: LLVMFunction
-    lateinit var bb: LLVMBasicBlock
+    val alloc = LLVMBuilder()
+    val bb = LLVMBuilder()
 
     fun getFun(name : String) : LLVMFunction {
         return fns[name]!!
@@ -39,21 +39,11 @@ class LLVMEmitter(){
     fun addDecl(decl: StructDecl, value: LLVMStructType){
         val name = decl.ident.name
         structs[name] = value
+        module.addStruct(name, value)
     }
 
     fun addDecl(decl: Decl, value: LLVMValue){
         decl2slot[decl] = value
-    }
-
-    fun getDecl(decl: Decl) : LLVMValue {
-        return decl2slot[decl]!!
-    }
-
-    fun emitOptTy(ty: Ty?) : LLVMType {
-        return when(ty){
-            null -> LLVMVoidType
-            else -> emitTy(ty)
-        }
     }
 
     fun emitTy(ty: Ty) : LLVMType {
@@ -74,7 +64,7 @@ class LLVMEmitter(){
                     testTy
                 }else{
                     val llvmMemberTys = mutableListOf<LLVMType>()
-                    val llvmStructTy = LLVMStructType(llvmMemberTys)
+                    val llvmStructTy = LLVMStructType(ty.name.value, llvmMemberTys)
                     type2llvm[ty] = llvmStructTy
 
                     for( memberTy in ty.members){
@@ -129,15 +119,19 @@ class LLVMEmitter(){
             when(decl){
                 is FnDecl -> {
                     fn = fns[decl.ident.name]!!
-                    bb = fn.createBasicBlock("entry")
+                    alloc.set(fn.createBasicBlock("alloc"))
 
                     for( (param, llvmParam) in decl.params.zip(fn.params)){
                         llvmParam.name = param.ident.name
-                        val slot = bb.createAlloca(llvmParam.ty)
-                        bb.createStore(llvmParam, slot)
+                        val slot = alloc.createAlloca(llvmParam.ty)
+                        alloc.createStore(llvmParam, slot)
                         decl2slot[param] = slot
                     }
 
+                    val entry = fn.createBasicBlock("entry")
+                    bb.set(entry)
+                    alloc.createBr(entry)
+                    alloc.prev()
                     remitExpr(decl.body)
                 }
                 else -> {}
@@ -154,7 +148,10 @@ class LLVMEmitter(){
                 val init = stmt.init
                 if( init != null ){
                     val initVal = remitExpr(init)
-                    addDecl(stmt.localDecl, initVal)
+                    val decTy = emitTy(stmt.localDecl.ty!!)
+                    val slot = alloc.createAlloca(decTy)
+                    bb.createStore(initVal, slot)
+                    addDecl(stmt.localDecl, slot)
                 }else{
                     unreachable()
                 }
@@ -162,6 +159,15 @@ class LLVMEmitter(){
                 LLVMNothing
             }
             else -> unreachable()
+        }
+    }
+
+    fun lemitExpr(expr: Expr) : LLVMValue {
+        if(expr is IdentExpr){
+            val decl = expr.identUse.decl
+            return decl2slot[decl]!!
+        }else{
+            throw RuntimeException("ss")
         }
     }
 
@@ -174,20 +180,29 @@ class LLVMEmitter(){
                 }
             }
             is InfixExpr -> {
-                val lhsVal = remitExpr(expr.lhs)
-                val rhsVal = remitExpr(expr.rhs)
+                if(expr.op == Op.Assign){
+                    val rhsVal = remitExpr(expr.rhs)
+                    val lhsVal = lemitExpr(expr.lhs)
+                    bb.createStore(rhsVal, lhsVal)
+                }else{
+                    val lhsVal = remitExpr(expr.lhs)
+                    val rhsVal = remitExpr(expr.rhs)
 
-                when(val op = expr.op){
-                    Op.Add -> bb.createAdd(lhsVal, rhsVal)
-                    Op.Sub -> bb.createSub(lhsVal, rhsVal)
-                    Op.Mul -> bb.createMul(lhsVal, rhsVal)
-                    Op.Div -> bb.createDiv(lhsVal, rhsVal)
-                    Op.Gt -> bb.addInst(CmpInst(CmpInstKind.ICMP_SGT, lhsVal, rhsVal))
-                    Op.Ne -> bb.addInst(CmpInst(CmpInstKind.ICMP_NE, lhsVal, rhsVal))
-                    Op.Eq -> bb.addInst(CmpInst(CmpInstKind.ICMP_EQ, lhsVal, rhsVal))
-                    else -> {
-                        println("not yet implemented {$op}")
-                        unreachable()
+                    when(val op = expr.op){
+                        Op.Add -> bb.createAdd(lhsVal, rhsVal)
+                        Op.Sub -> bb.createSub(lhsVal, rhsVal)
+                        Op.Mul -> bb.createMul(lhsVal, rhsVal)
+                        Op.Div -> bb.createDiv(lhsVal, rhsVal)
+                        Op.Gt -> bb.addInst(CmpInst(CmpInstKind.ICMP_SGT, lhsVal, rhsVal))
+                        Op.Ge -> bb.addInst(CmpInst(CmpInstKind.ICMP_SGE, lhsVal, rhsVal))
+                        Op.Lt -> bb.addInst(CmpInst(CmpInstKind.ICMP_SLT, lhsVal, rhsVal))
+                        Op.Le -> bb.addInst(CmpInst(CmpInstKind.ICMP_SLE, lhsVal, rhsVal))
+                        Op.Ne -> bb.addInst(CmpInst(CmpInstKind.ICMP_NE, lhsVal, rhsVal))
+                        Op.Eq -> bb.addInst(CmpInst(CmpInstKind.ICMP_EQ, lhsVal, rhsVal))
+                        else -> {
+                            println("not yet implemented {$op}")
+                            unreachable()
+                        }
                     }
                 }
             }
@@ -227,10 +242,10 @@ class LLVMEmitter(){
             is IfExpr -> {
                 remitIfExpr(expr)
             }
-            /*
+
             is WhileExpr -> {
                 remitWhileExpr(expr)
-            }*/
+            }
             else -> {
                 println("{$expr}")
                 unreachable()
@@ -251,44 +266,34 @@ class LLVMEmitter(){
         }else endBB
 
         bb.createCondBr(condition, trueBB, falseBB)
-        bb = trueBB
+        bb.set(trueBB)
 
-        val leftVal = remitExpr(expr.trueBranch)
+        remitExpr(expr.trueBranch)
         bb.createBr(endBB)
 
         if( falseBranch != null ){
-            val rightVal = remitExpr(falseBranch)
+            remitExpr(falseBranch)
             bb.createBr(endBB)
         }
 
-        bb = endBB
+        bb.set(endBB)
         return LLVMNothing
     }
-/*
-    fun remitWhileExpr(expr: WhileExpr) : Def {
-        val tyUnit = b.tyUnit()
-        val unit =  b.unit()
-        val bot =  b.bot()
 
-        val whileTy = b.pi(unit, bot)
-
-        val bodyFun = b.lam(whileTy)
-        val exitFun = b.lam(whileTy)
-
+    fun remitWhileExpr(expr: WhileExpr) : LLVMValue {
         val cmp = remitExpr(expr.condition)
-        val branches = b.tuple(arrayOf(bodyFun, exitFun))
-        val callee = b.extract(branches, cmp)
 
-        val app = b.app(callee, unit)
-        jump_bb(app, bodyFun)
+        val bodyBB = fn.createBasicBlock("while-body")
+        val exitBB = fn.createBasicBlock("while-exit")
+
+        bb.createCondBr(cmp, bodyBB, exitBB)
+        bb.set(bodyBB)
 
         remitExpr(expr.body)
-
         val cmp2 = remitExpr(expr.condition)
-        val branches2 = b.tuple(arrayOf(bodyFun, exitFun))
-        val callee2 = b.extract(branches2, cmp2)
+        bb.createCondBr(cmp2, bodyBB, exitBB)
+        bb.set(exitBB)
 
-        jump_bb(callee2, exitFun)
-        return unit
-    }*/
+        return LLVMNothing
+    }
 }

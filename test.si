@@ -1,8 +1,15 @@
+struct Node{
+    value : i32
+    parent: Node
+}
 
 fn main(a: i32) : i32{
-    return test()
+    let a: i32 = 9
+
+    while(a > 0){
+        a = a - 2
+    }
+
+    return a + 12
 }
 
-fn test() : i32{
-    return 99
-}

@@ -20,7 +20,7 @@ class LLVMFunction(
     }
 
     fun createName() : String{
-        return "_${nameIdx++}"
+        return ".${nameIdx++}"
     }
 
     fun createBasicBlock(name: String) : LLVMBasicBlock {
@@ -72,7 +72,7 @@ class LLVMFunction(
 abstract class LLVMValue(val ty: LLVMType) : LLVMDump {
     var name: String? = null
 
-    open fun remit(cp : CodePrinter, withType: Boolean = true){
+    override fun remit(cp : CodePrinter, withType: Boolean){
         if(withType){
             ty.dump(cp)
             cp.sep()

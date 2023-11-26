@@ -4,6 +4,7 @@ import backend.llvm.CodePrinter
 
 interface LLVMDump{
     fun dump(cp: CodePrinter)
+    fun remit(cp: CodePrinter, withType: Boolean = true)
 }
 
 interface LLVMType : LLVMDump
@@ -20,13 +21,21 @@ data class LLVMFunctionType(val retTy: LLVMType, val paramTys : List<LLVMType>, 
         }
     }
 
-    override fun dump(codePrinter: CodePrinter) {
+    override fun dump(cp: CodePrinter) {
         TODO("Not yet implemented")
+    }
+
+    override fun remit(cp: CodePrinter, withType: Boolean) {
+        dump(cp)
     }
 }
 
 object LLVMVoidType : LLVMType{
     override fun dump(cp: CodePrinter) {
+        cp += "void"
+    }
+
+    override fun remit(cp: CodePrinter, withType: Boolean) {
         TODO("Not yet implemented")
     }
 }
@@ -34,6 +43,10 @@ object LLVMVoidType : LLVMType{
 object LLVMBBType : LLVMType{
     override fun dump(cp: CodePrinter) {
         cp += "label"
+    }
+
+    override fun remit(cp: CodePrinter, withType: Boolean) {
+        TODO("Not yet implemented")
     }
 }
 data class LLVMIntType(val width: Int) : LLVMType{
@@ -47,14 +60,30 @@ data class LLVMIntType(val width: Int) : LLVMType{
         }
     }
 
-    override fun dump(codePrinter: CodePrinter) {
-        codePrinter += "i$width"
+    override fun dump(cp: CodePrinter) {
+        cp += "i$width"
+    }
+
+    override fun remit(cp: CodePrinter, withType: Boolean) {
+        dump(cp)
     }
 }
 
-data class LLVMStructType(val memberTys: List<LLVMType>) : LLVMType{
-    override fun dump(codePrinter: CodePrinter) {
-        TODO("Not yet implemented")
+data class LLVMStructType(val name: String, val memberTys: List<LLVMType>) : LLVMType{
+    override fun dump(cp: CodePrinter) {
+        cp += "%$name = type {"
+        var sep = ""
+        for( memberTy in memberTys ){
+            cp += sep
+            memberTy.remit(cp)
+            sep = ", "
+        }
+        cp += "}"
+        cp.nl()
+    }
+
+    override fun remit(cp: CodePrinter, withType: Boolean) {
+        cp += "%$name"
     }
 }
 
@@ -74,5 +103,9 @@ data class LLVMPointerType(val elemTy: LLVMType) : LLVMType{
     override fun dump(cp: CodePrinter) {
         elemTy.dump(cp)
         cp += "*"
+    }
+
+    override fun remit(cp: CodePrinter, withType: Boolean) {
+        dump(cp)
     }
 }

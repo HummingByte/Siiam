@@ -11,58 +11,20 @@ class LLVMBasicBlock(
     }
 
     private val insts = mutableListOf<LLVMInst>()
-    inline fun <reified T: LLVMInst> addInst(inst: T) : T{
-        addInstImpl(inst)
+
+    fun size() : Int{
+        return insts.size
+    }
+
+    fun addInst(inst: LLVMInst) : LLVMInst{
+        return addInst(inst, insts.size)
+    }
+    fun addInst(inst: LLVMInst, offset: Int) : LLVMInst{
+        insts.add(offset, inst)
         if(inst.name == null){
             inst.name = fn.createName()
         }
         return inst
-    }
-
-    fun addInstImpl(inst: LLVMInst){
-        insts.add(inst)
-    }
-    fun createAlloca(pointerTy: LLVMType) : LLVMValue {
-        return addInst(AllocaInst(pointerTy))
-    }
-    fun createStore(value: LLVMValue, ptr: LLVMValue) : LLVMValue {
-        return addInst(StoreInst(value, ptr))
-    }
-
-    fun createLoad(ptr: LLVMValue) : LLVMValue {
-        return addInst(LoadInst(ptr))
-    }
-
-    fun createAdd(lhs: LLVMValue, rhs: LLVMValue) : LLVMValue {
-        return addInst(InfixInst(InfixKind.Add, lhs, rhs))
-    }
-
-    fun createSub(lhs: LLVMValue, rhs: LLVMValue) : LLVMValue {
-        return addInst(InfixInst(InfixKind.Sub, lhs, rhs))
-    }
-
-    fun createMul(lhs: LLVMValue, rhs: LLVMValue) : LLVMValue {
-        return addInst(InfixInst(InfixKind.Mul, lhs, rhs))
-    }
-
-    fun createDiv(lhs: LLVMValue, rhs: LLVMValue) : LLVMValue {
-        return addInst(InfixInst(InfixKind.Div, lhs, rhs))
-    }
-
-    fun createRet(value: LLVMValue?){
-        addInstImpl(ReturnInst(value))
-    }
-
-    fun createCall(callee: LLVMValue, args: List<LLVMValue>) : LLVMValue {
-        return addInst(CallInst(callee, args))
-    }
-
-    fun createCondBr(cond: LLVMValue, trueBB: LLVMBasicBlock, falseBB: LLVMBasicBlock){
-        return addInstImpl(CondBranchInst(cond, trueBB, falseBB))
-    }
-
-    fun createBr(bb: LLVMBasicBlock){
-        return addInstImpl(BranchInst(bb))
     }
 
     override fun dump(cp: CodePrinter) {
