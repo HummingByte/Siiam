@@ -1,3 +1,4 @@
+package frontend
 
 fun <T> unreachable() : T{
     throw RuntimeException()
@@ -133,7 +134,7 @@ class Parser(val lexer: Lexer, val symTable : SymTable) {
         return MemberDecl(ident, ty, i)
     }
 
-    fun prim_type() : PrimTyKind{
+    fun prim_type() : PrimTyKind {
         val ty = when( kind() ){
             TokenKind.TypeBool -> PrimTyKind.Bool
             TokenKind.TypeByte -> PrimTyKind.Byte
@@ -153,14 +154,14 @@ class Parser(val lexer: Lexer, val symTable : SymTable) {
 
     fun parseType() : ASTTy {
         return when( kind() ){
-            TokenKind.TypeBool ,
-            TokenKind.TypeByte ,
-            TokenKind.TypeChar ,
-            TokenKind.TypeStr ,
-            TokenKind.TypeI32 ,
-            TokenKind.TypeI64 ,
-            TokenKind.TypeF32 ,
-            TokenKind.TypeF64 ,
+            TokenKind.TypeBool,
+            TokenKind.TypeByte,
+            TokenKind.TypeChar,
+            TokenKind.TypeStr,
+            TokenKind.TypeI32,
+            TokenKind.TypeI64,
+            TokenKind.TypeF32,
+            TokenKind.TypeF64,
             TokenKind.TypeUnit -> {
                 PrimASTTy(prim_type())
             }
@@ -384,14 +385,14 @@ class Parser(val lexer: Lexer, val symTable : SymTable) {
         return result
     }
 
-    fun parseStmt() : Stmt{
+    fun parseStmt() : Stmt {
         return when( kind() ){
             TokenKind.Let -> parse_decl()
             else -> ExprStmt(parse_expr())
         }
     }
 
-    fun parseIf() : Expr{
+    fun parseIf() : Expr {
         expect(TokenKind.If);
         val condition = parse_expr();
         val ifBranch = parseBlock();
@@ -409,7 +410,7 @@ class Parser(val lexer: Lexer, val symTable : SymTable) {
         return IfExpr(condition, ifBranch, elseBranch)
     }
 
-    fun parseWhile() : Expr{
+    fun parseWhile() : Expr {
         expect(TokenKind.While);
         val condition = parse_expr();
         isKind(TokenKind.LBrace);
@@ -428,7 +429,7 @@ class Parser(val lexer: Lexer, val symTable : SymTable) {
         return WhileExpr(condition, body, elseBranch)
     }
 
-    fun parse_decl() : Stmt{
+    fun parse_decl() : Stmt {
         accept(TokenKind.Let);
         val ident = parseIdent();
 
@@ -471,7 +472,7 @@ class Parser(val lexer: Lexer, val symTable : SymTable) {
         return stmts;
     }
 
-    fun parseParam() : Decl{
+    fun parseParam() : Decl {
         val ident = parseIdent();
         accept(TokenKind.Colon);
 

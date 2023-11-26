@@ -1,3 +1,5 @@
+package frontend
+
 import kotlin.text.StringBuilder
 
 
@@ -13,7 +15,7 @@ fun eE(c : Char) : Boolean { return c == 'e' || c == 'E'; }
 fun sgn(c : Char) : Boolean{ return c == '+' || c == '-'; } 
 
 class Lexer(val source: Source, val symTable : SymTable) {
-    var token: Token = Token(TokenKind.Error, TokenEnter.NL, null, Loc.zero())
+    var token: Token = Token(TokenKind.Error, TokenEnter.NL, null, Span.zero())
     var enter: TokenEnter = TokenEnter.NL
     val builder = StringBuilder()
 
@@ -76,10 +78,10 @@ class Lexer(val source: Source, val symTable : SymTable) {
 
     fun nextToken() : Token {
         nextTokenImpl()
-        token.loc = source.loc()
+        token.span = source.loc()
         token.enter = enter
         enter = TokenEnter.Token
-        return Token(token.kind, token.enter, token.symbol, token.loc)
+        return Token(token.kind, token.enter, token.symbol, token.span)
     }
 
     private fun lexSign() : TokenKind?{

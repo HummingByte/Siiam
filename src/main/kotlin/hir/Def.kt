@@ -1,3 +1,6 @@
+package hir
+
+import frontend.unreachable
 import java.nio.ByteBuffer
 import kotlin.math.min
 
@@ -56,8 +59,8 @@ class NodeDef(ax: Def, val ops : Array<Def>) : Def(ax){
 
 
 class NodeComparator{
-    private val visited = HashSet<Def>()
-    fun similar( left : Def, right : Def ) : Boolean{
+    private val visited = HashMap<Def, Def>()
+    fun similar(left : Def, right : Def) : Boolean{
         when(left){
             right -> return true
             is DataDef -> {
@@ -66,7 +69,10 @@ class NodeComparator{
             }
             is NodeDef -> {
                 if(right !is NodeDef) return false
-                if(!visited.add(left)) return true
+                visited.putIfAbsent(left, right)?.let {
+                    return it == right
+                }
+
                 if(left.hash != right.hash) return false
                 if(left.ax == null){
                     if(right.ax != null) return false
@@ -114,11 +120,11 @@ class World{
         println("test")
     }
 
-    fun axiom(axiom: Axiom) : Def{
+    fun axiom(axiom: Axiom) : Def {
         return axiom2def[axiom]!!
     }
 
-    fun insert(def : Def) : Def{
+    fun insert(def : Def) : Def {
         assert(def.hash != null)
         return sea.putIfAbsent(DefKey(def), def) ?: def
     }
@@ -127,11 +133,11 @@ class World{
 class SignNode(var index : Int, var def: Def){
     var lowLink : Int = index
     var closed: Boolean = false
-    var unique: SignNode? = null
+    var parent: SignNode? = null
     var hashes = Array(2){0}
 
-    fun unique() :  SignNode{
-        return unique?.unique() ?: this
+    fun unique() : SignNode {
+        return parent?.unique() ?: this
     }
 }
 
@@ -139,14 +145,15 @@ class CyclicSigner(val world: World){
     private val nodes = HashMap<Def, SignNode>()
     private val old2new = HashMap<Def, Def>()
 
-    private fun getNode(def: Def) : SignNode{
+    private fun getNode(def: Def) : SignNode {
         return nodes.computeIfAbsent(def){ SignNode(
             nodes.size,
             def
-        )}
+        )
+        }
     }
 
-    fun getNew(old : Def) : Def{
+    fun getNew(old : Def) : Def {
         if(old.hash != null) return old
         val new = old2new[old]
         if(new != null) return new
@@ -205,7 +212,7 @@ class CyclicSigner(val world: World){
 
             list.add(def)
             node.closed = true
-            if( def is NodeDef ){
+            if( def is NodeDef){
                 for( op in def.ops ){
                     collect(op, list)
                 }
@@ -294,7 +301,7 @@ class CyclicSigner(val world: World){
         }
 
         for( old in defs ){
-            if( old is NodeDef ){
+            if( old is NodeDef){
                 val new = old2new[old] as NodeDef
                 for( (idx, op) in old.ops.withIndex()){
                     new.ops[idx] = old2new[op] ?: this.old2new[op] ?: op
@@ -308,7 +315,7 @@ class CyclicSigner(val world: World){
     fun addMapping(oldDefs: List<Def>, old2new : HashMap<Def, Def>){
         for( old in oldDefs ){
             val node = getNode(old)
-            val uniqueNode = node.unique
+            val uniqueNode = node.parent
 
             val new = if( uniqueNode == null ){
                 val uniqueDef = old2new[old]
@@ -342,7 +349,7 @@ class CyclicSigner(val world: World){
             val key = DefKey(old, hash)
             val uniqueNode = uniqueMap[key]
             if( uniqueNode != null ){
-                node.unique = getNode(uniqueNode)
+                node.parent = getNode(uniqueNode)
                 old.hash = hash
             }else{
                 uniqueMap[key] = old
@@ -352,7 +359,7 @@ class CyclicSigner(val world: World){
         val values = uniqueMap.values
 
         for( value in values ){
-            if( value is NodeDef ){
+            if( value is NodeDef){
                 val ops = value.ops
                 for( (idx, op) in ops.withIndex() ){
                     val node = getNode(op)

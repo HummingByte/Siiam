@@ -1,5 +1,5 @@
-import java.nio.ByteBuffer
-import java.nio.IntBuffer
+package hir
+
 import java.nio.charset.Charset
 
 abstract class Data{

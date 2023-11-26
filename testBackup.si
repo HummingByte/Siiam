@@ -1,0 +1,65 @@
+
+fn main(a: i32) : i32{
+    main(a)
+}
+
+
+
+/*
+struct Node{
+    value : i32
+    next : Node
+}
+
+fn max(x : i64, y: i64) : i64{
+    if x != y{
+        return(x)
+    }else{
+        9
+    }
+}
+
+
+fn main(h : i64) : i64{
+    let z = 9
+    let c = (z - z) - (z - z)
+    let d = c + c
+    let e = d - d
+    let f = e - e
+    let g = f - f
+    let h = g - g
+    let i = h - h
+    let j = i - i
+    let k = j - j
+    let l = k * k
+    l
+}
+
+
+fn lol(  ){
+    let return2 : fn(i32) = return;
+
+    let result = (a : i32) {
+
+        return2(a + 1)
+    }
+
+    if(){
+        return(test())
+    }
+}
+
+fn test() : i32{
+
+    let i32 = int(32);
+
+    return x
+
+}
+
+
+fn test(  ) -> i8{
+
+    return 2:i32
+
+}*/

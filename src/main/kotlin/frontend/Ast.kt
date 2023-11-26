@@ -1,3 +1,4 @@
+package frontend
 
 class Module(var items: List<Decl>)
 
@@ -11,10 +12,11 @@ class LocalDecl(
     val ast_ty: ASTTy?) : Decl(ident);
 
 class FnDecl(
-            ident: Ident,
-            val params: List<Decl>,
-            val ret_ty: ASTTy?,
-            val body: Expr) : Decl(ident);
+    ident: Ident,
+    val params: List<Decl>,
+    val ret_ty: ASTTy?,
+    val body: Expr
+) : Decl(ident)
 
 class MemberDecl(
     ident: Ident,
@@ -37,7 +39,8 @@ interface ASTTy
 class PrimASTTy(val kind: PrimTyKind) : ASTTy
 class StructASTTy(val identUse: IdentUse) : ASTTy
 class FnASTTy(val param_types: List<ASTTy>,
-              val return_type: ASTTy) : ASTTy
+              val return_type: ASTTy
+) : ASTTy
 object ErrASTTy : ASTTy
 
 
@@ -85,14 +88,17 @@ class WhileExpr(
     val elseBranch : Expr?) : Expr()
 
 class PrefixExpr(val expr: Expr,
-                 val op: Op) : Expr()
+                 val op: Op
+) : Expr()
 class InfixExpr(
     val lhs: Expr,
     val rhs: Expr,
-    val op: Op) : Expr()
+    val op: Op
+) : Expr()
 
 class PostfixExpr(val expr: Expr,
-                  val op: Op) : Expr()
+                  val op: Op
+) : Expr()
 class RetExpr(
     val expr: Expr?) : Expr(){
     var decl: Decl? = null
@@ -103,7 +109,7 @@ class IdentUse(val ident: Ident) {
     var decl: Decl? = null
 }
 
-interface Literal
+sealed interface Literal
 class StrLiteral(val value: String) : Literal
 class CharLiteral(val value: Char) : Literal
 class IntLiteral(val value: Int) : Literal

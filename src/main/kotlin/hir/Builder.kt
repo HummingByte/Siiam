@@ -1,7 +1,7 @@
-
+package hir
 
 class Builder(val world : World) {
-    fun constructor() : Constructor{
+    fun constructor() : Constructor {
         return Constructor(world)
     }
 
@@ -58,12 +58,12 @@ class Builder(val world : World) {
         return nodeDef(literalAx, arrayOf(ty, valueDef), "lit")
     }
 
-    fun litInt( width: Int, idx: Int ) : Def{
+    fun litInt( width: Int, idx: Int ) : Def {
         val arity = tyInt(width)
         return lit(idx, arity)
     }
 
-    fun litIdx( width: Int, idx: Int ) : Def{
+    fun litIdx( width: Int, idx: Int ) : Def {
         val arity = tyIdx(width)
         return lit(idx, arity)
     }
@@ -83,11 +83,11 @@ class Builder(val world : World) {
         return nodeDef(ax, arrayOf(lam), "ret")
     }
 
-    fun unit() : Def{
+    fun unit() : Def {
         return tuple(arrayOf())
     }
 
-    fun tyUnit() : Def{
+    fun tyUnit() : Def {
         return sigma(arrayOf())
     }
 
@@ -208,7 +208,7 @@ class Builder(val world : World) {
 class Constructor(val world: World){
     private val cyclicSigner = CyclicSigner(world)
 
-    fun construct(def : Def) : Def{
+    fun construct(def : Def) : Def {
         val new = cyclicSigner.getNew(def)
         return new
     }

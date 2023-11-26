@@ -1,16 +1,20 @@
+package frontend
+
 class Token(var kind: TokenKind,
             var enter: TokenEnter,
             var symbol: Sym?,
-            var loc: Loc){
+            var span: Span
+){
 
 
     companion object{
-        private val ERROR = Token(TokenKind.Error,
+        private val ERROR = Token(
+            TokenKind.Error,
             TokenEnter.NL,
         null,
-            Loc.zero())
+            Span.zero())
 
-        fun error() : Token{
+        fun error() : Token {
             return ERROR
         }
     }

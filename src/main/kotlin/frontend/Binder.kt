@@ -1,3 +1,5 @@
+package frontend
+
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -104,7 +106,7 @@ class Binder {
     }
 
     fun visit_decl(decl: Decl){
-        if( mode == BindMode.Discover ){
+        if( mode == BindMode.Discover){
             insert(decl)
         }else{
             when( decl ){
@@ -123,8 +125,8 @@ class Binder {
                     }
                 }
                 is MemberDecl -> {
-                    var astType : ASTTy = decl.astTy
-                    if( astType is StructASTTy ){
+                    val astType = decl.astTy
+                    if( astType is StructASTTy){
                         val decl = lookup(astType.identUse.ident.sym)
                         astType.identUse.decl = decl
                     }

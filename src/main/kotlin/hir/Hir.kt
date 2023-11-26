@@ -1,3 +1,13 @@
+package hir
+
+import frontend.FnTy
+import frontend.PrimTy
+import frontend.StructTy
+import frontend.SymTable
+import frontend.Ty
+import frontend.*
+import frontend.unreachable
+
 enum class HirEmitterMode{
     Decl,
     Def
@@ -15,7 +25,7 @@ class HirEmitter(val symTable : SymTable){
     var currentBB: Def? = null
     var mode : HirEmitterMode = HirEmitterMode.Decl
 
-    fun getFun(name : String) : Def{
+    fun getFun(name : String) : Def {
         val def = fns[name]!!
         return b.constructor().construct(def)
     }
@@ -34,14 +44,14 @@ class HirEmitter(val symTable : SymTable){
         return decl2def[decl]
     }
 
-    fun emitOptTy(ty: Ty? ) : Def{
+    fun emitOptTy(ty: Ty? ) : Def {
         return when(ty){
             null -> b.tyUnit()
             else -> emitTy(ty)
         }
     }
 
-    fun emitTy(ty: Ty ) : Def{
+    fun emitTy(ty: Ty) : Def {
         return when(ty){
             is PrimTy -> {
                 when(ty.kind){
@@ -59,7 +69,7 @@ class HirEmitter(val symTable : SymTable){
                 }
         
                 val argTy = b.sigma(arr)
-                val retTy = emitOptTy(ty.ret_ty)
+                val retTy = emitOptTy(ty.retTy)
         
                 b.pi(argTy, retTy)
             }
@@ -88,7 +98,7 @@ class HirEmitter(val symTable : SymTable){
         }
     }
 
-    fun handleMemResult(def : Def) : Def{
+    fun handleMemResult(def : Def) : Def {
         val zero = b.litIdx(2, 0)
         val one = b.litIdx(2, 1)
         val mem = b.extract(def, zero)
@@ -263,7 +273,7 @@ class HirEmitter(val symTable : SymTable){
         }
     }
 
-    fun remitIfExpr(expr: IfExpr) : Def{
+    fun remitIfExpr(expr: IfExpr) : Def {
         val tyUnit = b.tyUnit()
         val unit =  b.unit()
         val bot =  b.bot()
@@ -304,7 +314,7 @@ class HirEmitter(val symTable : SymTable){
         }
     }
 
-    fun remitWhileExpr(expr: WhileExpr) : Def{
+    fun remitWhileExpr(expr: WhileExpr) : Def {
         val tyUnit = b.tyUnit()
         val unit =  b.unit()
         val bot =  b.bot()
@@ -355,7 +365,7 @@ class HirEmitter(val symTable : SymTable){
             val i32 = builder.tyInt(32)
             val i64 = builder.tyInt(64)
             val a = NodeDef(ax, arrayOf(world.empty, i32))
-            val b = NodeDef(ax, arrayOf(world.empty, i64))
+            val b = NodeDef(ax, arrayOf(world.empty, i32))
             a.ops[0] = b
             b.ops[0] = a
             a.dbg = "a"
@@ -374,10 +384,10 @@ class HirEmitter(val symTable : SymTable){
             println("    $name $signature")
         }
         println("Functions:")
-        val constFns = arrayListOf<Def>()
+        val constFns = mutableMapOf<String, Def>()
         for( (name, def) in fns){
             val new = constructor.construct(def)
-            constFns.add(new)
+            constFns[name] = new
             val signature = "%X".format(new.hash)
             println("    $name $signature")
         }

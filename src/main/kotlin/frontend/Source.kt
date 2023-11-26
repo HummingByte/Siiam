@@ -1,3 +1,5 @@
+package frontend
+
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.InputStreamReader
@@ -90,12 +92,12 @@ class Source(var reader : BufferedReader) {
         this.last = this.current
     }
 
-    fun loc() : Loc {
-        return Loc(last, current)
+    fun loc() : Span {
+        return Span(last, current)
     }
 
     companion object{
-        fun new( file : String ) : Source{
+        fun new( file : String ) : Source {
             return Source(BufferedReader(InputStreamReader(FileInputStream(file))))
         }
     }

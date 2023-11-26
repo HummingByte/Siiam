@@ -1,10 +1,11 @@
+package frontend
 
 class TyTable {
     val primTys = HashMap<PrimTyKind, Ty>()
     val declTys = HashMap<Decl, Ty>()
 
     fun primTy(ty: PrimTyKind) : Ty {
-        return primTys.computeIfAbsent(ty){PrimTy(it)}
+        return primTys.computeIfAbsent(ty){ PrimTy(it) }
     }
 
     fun structTy(ty: StructASTTy) : Ty {
@@ -12,7 +13,7 @@ class TyTable {
         return declTy(decl)!!
     }
 
-    fun inferOrUnit(ty: ASTTy?) : Ty{
+    fun inferOrUnit(ty: ASTTy?) : Ty {
         return if( ty != null ){
             infer(ty)
         }else{
@@ -37,7 +38,7 @@ class TyTable {
         val result = when( decl ){
             is StructDecl -> {
                 val members = ArrayList<Ty>()
-                val structTy = StructTy( decl.ident.sym, members )
+                val structTy = StructTy(decl.ident.sym, members)
                 decl.ty = structTy
     
                 for( member in decl.members ){
@@ -118,15 +119,15 @@ class TypeChecker(val tyTable: TyTable) {
         }
     }
 
-    fun primTy(prim_ty: PrimTyKind) : Ty{
+    fun primTy(prim_ty: PrimTyKind) : Ty {
         return tyTable.primTy(prim_ty)
     }
 
-    fun errTy() : Ty{
+    fun errTy() : Ty {
         return ErrTy
     }
 
-    fun infer(ast_ty: ASTTy) : Ty{
+    fun infer(ast_ty: ASTTy) : Ty {
         return tyTable.infer(ast_ty)
     }
 
@@ -134,7 +135,7 @@ class TypeChecker(val tyTable: TyTable) {
         return tyTable.declTy(decl)
     }
 
-    fun joinTy(lhs: Ty, rhs: Ty) : Ty{
+    fun joinTy(lhs: Ty, rhs: Ty) : Ty {
         return if( lhs != rhs){
             errTy()
         }else{
@@ -256,7 +257,7 @@ class TypeChecker(val tyTable: TyTable) {
                 if( retTy != null ){
                     val lastStmt = expr.stmts.lastOrNull()
         
-                    if( lastStmt != null && lastStmt is ExprStmt ){
+                    if( lastStmt != null && lastStmt is ExprStmt){
                         coerce(lastStmt.expr, retTy)
                     }
         
