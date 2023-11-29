@@ -71,4 +71,6 @@ gradle-app.setting
 *.ll
 /*.si
 
+.DS_Store
+
 # End of https://www.toptal.com/developers/gitignore/api/gradle,kotlin,git
