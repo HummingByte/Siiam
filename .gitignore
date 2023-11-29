@@ -68,5 +68,7 @@ gradle-app.setting
 ### Gradle Patch ###
 # Java heap dump
 *.hprof
+*.ll
+/*.si
 
 # End of https://www.toptal.com/developers/gitignore/api/gradle,kotlin,git

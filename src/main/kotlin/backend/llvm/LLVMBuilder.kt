@@ -66,4 +66,12 @@ class LLVMBuilder{
     fun createBr(bb: LLVMBasicBlock){
         addInst(BranchInst(bb))
     }
+
+    fun createPhi(vararg pairs : Pair<LLVMValue, LLVMBasicBlock>) : LLVMValue{
+        return addInst(PhiInst(pairs))
+    }
+
+    fun createPhi(lhsValue: LLVMValue, lhsBB: LLVMBasicBlock, rhsValue: LLVMValue, rhsBB: LLVMBasicBlock) : LLVMValue{
+        return createPhi(Pair(lhsValue, lhsBB), Pair(rhsValue, rhsBB))
+    }
 }

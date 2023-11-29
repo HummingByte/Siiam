@@ -120,6 +120,24 @@ class BranchInst(val bb: LLVMBasicBlock) : LLVMInst(LLVMVoidType){
         bb.remit(cp)
     }
 }
+
+class PhiInst(val pairs: Array<out Pair<LLVMValue, LLVMBasicBlock>>) : LLVMInst(pairs.first().first.ty){
+    override fun dump(cp: CodePrinter) {
+        remit(cp, false)
+        cp += " = phi "
+        ty.dump(cp)
+        var sep = " "
+        for(pair in pairs){
+            cp += sep
+            cp += "["
+            pair.first.remit(cp, false)
+            cp += ", "
+            pair.second.remit(cp, false)
+            cp += "]"
+            sep = ", "
+        }
+    }
+}
 enum class InfixKind(val op: String){
     Add("add"),
     Sub("sub"),

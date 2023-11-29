@@ -3,7 +3,6 @@ package backend.llvm
 import backend.llvm.type.*
 import frontend.FnTy
 import frontend.PrimTy
-import frontend.SymTable
 import frontend.Ty
 import frontend.*
 import frontend.unreachable
@@ -145,15 +144,14 @@ class LLVMEmitter(){
                 remitExpr(stmt.expr)
             }
             is LetStmt ->{
+                val decTy = emitTy(stmt.localDecl.ty!!)
+                val slot = alloc.createAlloca(decTy)
+                addDecl(stmt.localDecl, slot)
+
                 val init = stmt.init
                 if( init != null ){
                     val initVal = remitExpr(init)
-                    val decTy = emitTy(stmt.localDecl.ty!!)
-                    val slot = alloc.createAlloca(decTy)
                     bb.createStore(initVal, slot)
-                    addDecl(stmt.localDecl, slot)
-                }else{
-                    unreachable()
                 }
     
                 LLVMNothing
@@ -261,22 +259,29 @@ class LLVMEmitter(){
 
         val falseBranch = expr.falseBranch
 
-        val falseBB = if(falseBranch != null){
+        val elseBB = if(falseBranch != null){
             fn.createBasicBlock("if-false")
         }else endBB
 
-        bb.createCondBr(condition, trueBB, falseBB)
+        bb.createCondBr(condition, trueBB, elseBB)
         bb.set(trueBB)
 
-        remitExpr(expr.trueBranch)
+        val trueVal = remitExpr(expr.trueBranch)
         bb.createBr(endBB)
-
+        bb.set(elseBB)
         if( falseBranch != null ){
-            remitExpr(falseBranch)
+            val falseVal = remitExpr(falseBranch)
             bb.createBr(endBB)
+            bb.set(endBB)
+
+            if(expr.ty != null){
+                return bb.createPhi(
+                    trueVal, trueBB,
+                    falseVal, elseBB
+                )
+            }
         }
 
-        bb.set(endBB)
         return LLVMNothing
     }
 

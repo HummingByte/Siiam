@@ -136,7 +136,7 @@ class TypeChecker(val tyTable: TyTable) {
     }
 
     fun joinTy(lhs: Ty, rhs: Ty) : Ty {
-        return if( lhs != rhs){
+        return if( lhs != rhs ){
             errTy()
         }else{
             lhs
@@ -215,8 +215,7 @@ class TypeChecker(val tyTable: TyTable) {
                     Op.Eq , Op.Ne -> {
                         coerce(expr, primTy(PrimTyKind.Bool))
                     }
-                    Op.Add , Op.Sub , Op.Mul , Op.Div -> {
-        
+                    Op.Assign, Op.Add , Op.Sub , Op.Mul , Op.Div -> {
                         var join_option_ty = joinOptionTy(expr.ty, expr.lhs.ty )
                         join_option_ty = joinOptionTy(join_option_ty, expr.rhs.ty)
     
@@ -256,15 +255,26 @@ class TypeChecker(val tyTable: TyTable) {
                 val retTy = expr.ty
                 if( retTy != null ){
                     val lastStmt = expr.stmts.lastOrNull()
-        
+
                     if( lastStmt != null && lastStmt is ExprStmt){
                         coerce(lastStmt.expr, retTy)
                     }
-        
-                    for( stmt in expr.stmts.reversed()){
-                        visitStmt(stmt)
-                    }
                 }
+
+                for( stmt in expr.stmts.reversed()){
+                    visitStmt(stmt)
+                }
+            }
+            is IfExpr -> {
+                val ifTy = expr.ty
+                if(ifTy != null){
+                    coerce(expr.trueBranch, ifTy)
+                    expr.falseBranch?.let{ coerce(it, ifTy)}
+                }
+
+                visitExpr(expr.condition)
+                visitExpr(expr.trueBranch)
+                expr.falseBranch?.let{visitExpr(it) }
             }
             else -> return
         }
